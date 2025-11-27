@@ -1,0 +1,30 @@
+# rdv (render-diff-validate)
+`rdv` provides a fast and local preview of your rendered Kubernetes manifest changes.
+
+It renders your local Helm chart or Kustomize overlay, validates rendered manifests via kubeconform and then compares the resulting manifests against the version in a target git ref (like 'main' or 'develop').
+
+It prints a colored diff of the final rendered YAML.
+
+## Requirements
+* `make`
+* `git`
+* Go `1.24` or newer
+
+## Installation
+
+You can install `rdv` directly using `go install`:
+
+```sh
+go install github.com/dlactin/rdv@latest
+```
+
+# Flags
+| Flag | Shorthand | Description | Default |
+| :--- | :--- | :--- | :--- |
+{{- range .Flags }}
+| `--{{ .Name }}` | `{{ .Shorthand }}` | {{ .Usage }} | `{{ .Default }}` |
+{{- end }}
+
+# Examples
+This must be run while your current directory is within your git repository
+{{ .Example }}

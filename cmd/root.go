@@ -2,6 +2,8 @@
 // using the Cobra library.
 package cmd
 
+//go:generate go run ../internal/tools/docgen/main.go
+
 import (
 	"context"
 	"fmt"
@@ -47,6 +49,23 @@ var rootCmd = &cobra.Command{
 It renders your local Helm charts or Kustomize overlays, validates the output against Kubernetes schemas (via kubeconform),
 and generates a colored diff comparing your local changes against a target Git reference (e.g., 'main').`,
 	Version: getVersion(),
+	Example: `
+### Checking a Helm Chart diff against another target ref
+
+	rdv -p ./examples/helm/helloworld -f values-dev.yaml -r development
+
+### Checking a Helm Chart diff and validating our rendered manifests
+
+	rdv -p ./examples/helm/helloworld --validate
+
+### Checking Kustomize diff against the default (main) branch with semantic diff
+
+	rdv -p ./examples/kustomize/helloworld -s
+
+### Checking Kustomize diff against a tag
+
+	rdv -p ./examples/kustomize/helloworld -r tags/v0.5.1
+	`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		log.SetFlags(0) // Disabling timestamps for log output
 
@@ -276,8 +295,8 @@ func init() {
 
 	outputFlags.BoolVarP(&semanticDiffFlag, "semantic", "s", false, "Enable semantic diffing of k8s manifests (using dyff)")
 	outputFlags.StringVarP(&outputPathFlag, "output", "o", "", "Write the local and target rendered manifests to a specific file path")
-	outputFlags.BoolVarP(&plainFlag, "plain", "", false, "Output in plain style without any highlighting")
-	outputFlags.BoolVarP(&debugFlag, "debug", "", false, "Enable verbose logging for debugging")
+	outputFlags.BoolVar(&plainFlag, "plain", false, "Output in plain style without any highlighting")
+	outputFlags.BoolVar(&debugFlag, "debug", false, "Enable verbose logging for debugging")
 
 	// Add our custom flagsets to our rootCMD
 	rootCmd.Flags().AddFlagSet(coreFlags)
@@ -332,3 +351,6 @@ func init() {
 	})
 
 }
+
+// Root exposes the root command for tools like doc generators
+func Root() *cobra.Command { return rootCmd }

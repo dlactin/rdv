@@ -13,6 +13,11 @@ all: build
 build:
 	go build -o $(LOCALBIN)/rdv
 
+# Build docs
+.PHONY: docs
+docs:
+	go generate cmd/root.go
+
 # Run golangci-lint
 .PHONY: lint
 lint: golangci-lint
