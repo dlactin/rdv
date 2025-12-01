@@ -1,9 +1,11 @@
 # rdv (render-diff-validate)
 `rdv` provides a fast and local preview of your rendered Kubernetes manifest changes.
 
-It renders your local Helm chart or Kustomize overlay, validates rendered manifests via kubeconform and then compares the resulting manifests against the version in a target git ref (like 'main' or 'develop').
+It renders your local Helm chart or Kustomize overlay, (optionally) validates rendered manifests via kubeconform and then compares the resulting manifests against the version in a target git ref (like 'main' or 'develop').
 
 It prints a colored diff of the final rendered YAML.
+
+![RDV Default Diff](docs/assets/rdv-default-ex.gif)
 
 ## Requirements
 * `make`
