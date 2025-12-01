@@ -5,6 +5,8 @@ It renders your local Helm chart or Kustomize overlay, validates rendered manife
 
 It prints a colored diff of the final rendered YAML.
 
+![RDV Default Diff](docs/assets/rdv-default-ex.gif)
+
 ## Requirements
 * `make`
 * `git`
@@ -48,10 +50,10 @@ rdv -p ./examples/helm/helloworld -f values-dev.yaml -r development
 rdv -p ./examples/helm/helloworld --validate
 ```
 
-### Checking Kustomize diff against the default (main) branch
+### Checking Kustomize diff against the default (main) branch with semantic diff
 
 ```bash
-rdv -p ./examples/kustomize/helloworld
+rdv -p ./examples/kustomize/helloworld -s
 ```
 
 ### Checking Kustomize diff against a tag
