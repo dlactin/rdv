@@ -4,13 +4,11 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/dlactin/rdv)](https://goreportcard.com/badge/github.com/dlactin/rdv)
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
 
-Easily view your GitOps changes without the rendered manifests pattern.
+`rdv` lets you preview your GitOps changes without committing rendered manifests.
 
-`rdv` provides a fast and local preview of your rendered Kubernetes manifest changes.
+It renders your local Helm chart or Kustomize overlay, optionally validates the output with kubeconform, and compares the results against a target git ref (such as `main` or `develop`).
 
-It renders your local Helm chart or Kustomize overlay, (optionally) validates rendered manifests via kubeconform and then compares the resulting manifests against the version in a target git ref (like 'main' or 'develop').
-
-It prints a colored diff of the final rendered YAML.
+A coloured diff shows exactly what will change before you push.
 
 ![RDV Default Diff](docs/assets/rdv-default-ex.gif)
 
