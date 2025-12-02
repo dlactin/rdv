@@ -1,7 +1,14 @@
-# rdv (render-diff-validate)
+# RDV (render-diff-validate)
+[![Release Version](https://img.shields.io/github/v/release/dlactin/rdv?label=release)](https://github.com/dlactin/rdv/releases/latest)
+[![Build](https://github.com/dlactin/rdv/workflows/CI/badge.svg)](https://github.com/dlactin/rdv/actions?query=workflow%3A"CI")
+[![Go Report Card](https://goreportcard.com/badge/github.com/dlactin/rdv)](https://goreportcard.com/badge/github.com/dlactin/rdv)
+[![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
+
+Easily view your GitOps changes without the rendered manifests pattern.
+
 `rdv` provides a fast and local preview of your rendered Kubernetes manifest changes.
 
-It renders your local Helm chart or Kustomize overlay, validates rendered manifests via kubeconform and then compares the resulting manifests against the version in a target git ref (like 'main' or 'develop').
+It renders your local Helm chart or Kustomize overlay, (optionally) validates rendered manifests via kubeconform and then compares the resulting manifests against the version in a target git ref (like 'main' or 'develop').
 
 It prints a colored diff of the final rendered YAML.
 
