@@ -8,6 +8,7 @@ import (
 
 	"github.com/dlactin/rdv/internal/helm"
 	"github.com/dlactin/rdv/internal/kustomize"
+	"github.com/dlactin/rdv/internal/options"
 	"github.com/gonvenience/bunt"
 	"github.com/gonvenience/ytbx"
 	"github.com/hexops/gotextdiff"
@@ -27,12 +28,12 @@ const (
 
 // RenderManifests will render a Helm Chart or build a Kustomization
 // and return the rendered manifests as a string
-func RenderManifests(path string, values []string, debug bool, update bool, lint bool) (string, error) {
+func RenderManifests(path string, values []string, opts options.CmdOptions) (string, error) {
 	var renderedManifests string
 	var err error
 
 	if helm.IsHelmChart(path) {
-		renderedManifests, err = helm.RenderChart(path, "release", values, debug, update, lint)
+		renderedManifests, err = helm.RenderChart(path, "release", values, opts)
 		if err != nil {
 			return "", fmt.Errorf("failed to render target Chart: '%w'", err)
 		}

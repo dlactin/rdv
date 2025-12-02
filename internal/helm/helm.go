@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/dlactin/rdv/internal/options"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -27,8 +28,8 @@ import (
 var logMutex sync.Mutex
 
 // renderChart loads, merges values, and renders a Helm chart
-func RenderChart(chartPath, releaseName string, valuesFiles []string, debug bool, update bool, lint bool) (string, error) {
-	chart, err := loadChart(chartPath, debug)
+func RenderChart(chartPath, releaseName string, valuesFiles []string, opts options.CmdOptions) (string, error) {
+	chart, err := loadChart(chartPath, opts.Debug)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", err
@@ -45,7 +46,7 @@ func RenderChart(chartPath, releaseName string, valuesFiles []string, debug bool
 	// Helm Dependency Build
 	// Run 'helm dependency build' if dependencies are present
 	if chart.Metadata.Dependencies != nil {
-		if debug {
+		if opts.Debug {
 			log.Printf("Chart has dependencies, running 'helm dependency build' for: %s\n", chartPath)
 		}
 
@@ -57,7 +58,7 @@ func RenderChart(chartPath, releaseName string, valuesFiles []string, debug bool
 
 		// We need a basic cli.EnvSettings to init the getter.Providers.
 		settings := cli.New()
-		settings.Debug = debug // Setting debug to match flag
+		settings.Debug = opts.Debug // Setting debug to match flag
 
 		getters := getter.All(settings)
 
@@ -66,13 +67,13 @@ func RenderChart(chartPath, releaseName string, valuesFiles []string, debug bool
 			Out:       io.Discard,
 			ChartPath: chartPath,
 			Getters:   getters,
-			Debug:     debug,
+			Debug:     opts.Debug,
 		}
 
 		// Run update. This updates the Chart.lock file if dependencies have changed.
 		// Only used if the -u flag is passed.
-		if update {
-			err = silentRun(debug, func() error {
+		if opts.UpdateDeps {
+			err = silentRun(opts.Debug, func() error {
 				return man.Update()
 			})
 			if err != nil {
@@ -82,8 +83,8 @@ func RenderChart(chartPath, releaseName string, valuesFiles []string, debug bool
 
 		// Include Helm linting by default, after trying to load the chart, values files
 		// and any dependencies.
-		if lint {
-			err = lintChart(chartPath, userValues, debug)
+		if opts.Lint {
+			err = lintChart(chartPath, userValues, opts.Debug)
 			if err != nil {
 				return "", fmt.Errorf("failed to run helm lint: %w", err)
 			}
@@ -91,7 +92,7 @@ func RenderChart(chartPath, releaseName string, valuesFiles []string, debug bool
 
 		// Run build. This downloads charts into the 'charts/' directory.
 		// We are ignoring some log output here, which can be reverted with the --debug flag
-		err = silentRun(debug, func() error {
+		err = silentRun(opts.Debug, func() error {
 			return man.Build()
 		})
 		if err != nil {
@@ -100,7 +101,7 @@ func RenderChart(chartPath, releaseName string, valuesFiles []string, debug bool
 
 		// Reload the chart after building dependencies
 		// This ensures the newly downloaded subcharts are included in the render.
-		chart, err = loadChart(chartPath, debug)
+		chart, err = loadChart(chartPath, opts.Debug)
 		if err != nil {
 			return "", fmt.Errorf("failed to reload chart after dependency build: %w", err)
 		}

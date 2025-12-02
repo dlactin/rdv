@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/dlactin/rdv/internal/git"
+	"github.com/dlactin/rdv/internal/options"
 )
 
 func TestGetRepoRoot(t *testing.T) {
@@ -29,39 +30,55 @@ func TestRenderManifests(t *testing.T) {
 	testCases := []struct {
 		name        string
 		path        string
-		debug       bool
+		opts        options.CmdOptions
 		values      []string
 		wantContent string
 		wantErr     bool
 	}{
 		{
-			name:        "Renders Helm chart",
-			path:        "../../examples/helm/helloworld",
-			debug:       false,
+			name: "Renders Helm chart",
+			path: "../../examples/helm/helloworld",
+			opts: options.CmdOptions{
+				Debug:      false,
+				UpdateDeps: false,
+				Lint:       false,
+			},
 			values:      nil,
 			wantContent: "kind: ConfigMap",
 			wantErr:     false,
 		},
 		{
-			name:        "Renders Helm chart with values",
-			path:        "../../examples/helm/helloworld",
-			debug:       false,
+			name: "Renders Helm chart with values",
+			path: "../../examples/helm/helloworld",
+			opts: options.CmdOptions{
+				Debug:      false,
+				UpdateDeps: false,
+				Lint:       false,
+			},
 			values:      []string{"../../examples/helm/helloworld/values-dev.yaml"},
 			wantContent: "nginx:dev",
 			wantErr:     false,
 		},
 		{
-			name:        "Renders Kustomize project",
-			path:        "../../examples/kustomize/helloworld",
-			debug:       false,
+			name: "Renders Kustomize project",
+			path: "../../examples/kustomize/helloworld",
+			opts: options.CmdOptions{
+				Debug:      false,
+				UpdateDeps: false,
+				Lint:       false,
+			},
 			values:      nil,
 			wantContent: "kind: ConfigMap",
 			wantErr:     false,
 		},
 		{
-			name:    "Returns error for invalid path",
-			path:    "../../examples/not-a-real-path",
-			debug:   false,
+			name: "Returns error for invalid path",
+			path: "../../examples/not-a-real-path",
+			opts: options.CmdOptions{
+				Debug:      false,
+				UpdateDeps: false,
+				Lint:       false,
+			},
 			values:  nil,
 			wantErr: true,
 		},
@@ -69,7 +86,7 @@ func TestRenderManifests(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			output, err := RenderManifests(tc.path, tc.values, tc.debug, false, false)
+			output, err := RenderManifests(tc.path, tc.values, tc.opts)
 
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("RenderManifests() error = %v, wantErr %v", err, tc.wantErr)

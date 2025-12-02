@@ -3,6 +3,8 @@ package helm
 import (
 	"strings"
 	"testing"
+
+	"github.com/dlactin/rdv/internal/options"
 )
 
 func TestIsHelmChart(t *testing.T) {
@@ -45,11 +47,13 @@ func TestRenderChart(t *testing.T) {
 
 	t.Run("Render with default values", func(t *testing.T) {
 		valuesFiles := []string{}
-		debug := false // Test the silent path
-		update := false
-		lint := true
+		opts := options.CmdOptions{
+			Debug:      false,
+			UpdateDeps: false,
+			Lint:       true,
+		}
 
-		output, err := RenderChart(chartPath, releaseName, valuesFiles, debug, update, lint)
+		output, err := RenderChart(chartPath, releaseName, valuesFiles, opts)
 		if err != nil {
 			t.Fatalf("RenderChart failed: %v", err)
 		}
@@ -76,11 +80,13 @@ func TestRenderChart(t *testing.T) {
 		valuesFile := "../../examples/helm/helloworld/values-dev.yaml"
 
 		valuesFiles := []string{valuesFile}
-		debug := false // Test the silent path
-		update := false
-		lint := true
+		opts := options.CmdOptions{
+			Debug:      false,
+			UpdateDeps: false,
+			Lint:       true,
+		}
 
-		output, err := RenderChart(chartPath, releaseName, valuesFiles, debug, update, lint)
+		output, err := RenderChart(chartPath, releaseName, valuesFiles, opts)
 		if err != nil {
 			t.Fatalf("RenderChart failed: %v", err)
 		}
@@ -100,11 +106,13 @@ func TestRenderChart(t *testing.T) {
 		valuesFile := "../../examples/helm/helloworld/values-dev.yaml"
 
 		valuesFiles := []string{valuesFile}
-		debug := true // Test the silent path
-		update := true
-		lint := true
+		opts := options.CmdOptions{
+			Debug:      true,
+			UpdateDeps: true,
+			Lint:       true,
+		}
 
-		output, err := RenderChart(chartPath, releaseName, valuesFiles, debug, update, lint)
+		output, err := RenderChart(chartPath, releaseName, valuesFiles, opts)
 		if err != nil {
 			t.Fatalf("RenderChart failed: %v", err)
 		}
