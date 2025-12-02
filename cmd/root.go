@@ -17,6 +17,7 @@ import (
 
 	"github.com/dlactin/rdv/internal/diff"
 	"github.com/dlactin/rdv/internal/git"
+	"github.com/dlactin/rdv/internal/options"
 	"github.com/dlactin/rdv/internal/validate"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -110,6 +111,15 @@ and generates a colored diff comparing your local changes against a target Git r
 	},
 
 	RunE: func(cmd *cobra.Command, args []string) error {
+
+		// Setup our options variable to pass into the render and diff functions
+		// We want lint enabled by default, but we'll override this for target ref
+		opts := options.CmdOptions{
+			Debug:      debugFlag,
+			UpdateDeps: updateFlag,
+			Lint:       true,
+		}
+
 		log.Printf("Starting diff against git ref '%s':", fullRef)
 
 		// Get the absolute path from the path flag
@@ -161,14 +171,14 @@ and generates a colored diff comparing your local changes against a target Git r
 		// We only lint our local version
 		// Render local Chart or Kustomization
 		g.Go(func() error {
-			localRender, err = diff.RenderManifests(localPath, localValuesPaths, debugFlag, updateFlag, true)
+			localRender, err = diff.RenderManifests(localPath, localValuesPaths, opts)
 			if err != nil {
 				return fmt.Errorf("failed to render path in local ref: %w", err)
 			}
 
 			// Run local rendered manifests through kubeconform if --validate flag is passed
 			if validateFlag {
-				err = validate.ValidateManifests(localRender, debugFlag)
+				err = validate.ValidateManifests(localRender, opts.Debug)
 				if err != nil {
 					return err
 				}
@@ -178,7 +188,9 @@ and generates a colored diff comparing your local changes against a target Git r
 
 		// Render target Ref Chart or Kustomization
 		g.Go(func() error {
-			targetRender, err = diff.RenderManifests(targetPath, targetValuesPaths, debugFlag, updateFlag, false)
+			// Disable linting for target rendering
+			opts.Lint = false
+			targetRender, err = diff.RenderManifests(targetPath, targetValuesPaths, opts)
 			if err != nil {
 				// If the path does not exist in the target ref
 				// We can assume it's a new addition and diff against
