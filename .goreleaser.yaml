@@ -5,16 +5,20 @@
 # Feel free to remove those if you don't want/need to use them.
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj
+project_name: rdv
 
 version: 2
 
 before:
   hooks:
     - go mod tidy
-    - go generate ./...
+    - go test ./...
 
 builds:
-  - env:
+  - id: rdv
+    main: .
+    binary: rdv
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
@@ -35,15 +39,16 @@ archives:
       {{- if .Arm }}v{{ .Arm }}{{ end }}
 
 changelog:
-  sort: asc
+  sort: desc
+  use: git
   filters:
     exclude:
+      - "^chore:"
       - "^docs:"
       - "^test:"
+      - "^ci:"
 
 release:
-  footer: >-
-
-    ---
-
-    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
+  draft: false
+  prerelease: auto
+  disable: false

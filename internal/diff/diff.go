@@ -4,6 +4,7 @@ package diff
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/dlactin/rdv/internal/helm"
@@ -90,8 +91,18 @@ func ColorizeDiff(diff string, plain bool) string {
 // it is better suited for larger scale changes to a k8s resources
 func CreateSemanticDiff(targetRender, localRender, fromName, toName string, plain bool) (*dyff.HumanReport, error) {
 	// dyff is using bunt for text colouring
-	if plain {
+	// plain flag & writing to a file turns colours off
+	// defaults to ON or AUTO if we get an error
+	fi, err := os.Stdout.Stat()
+	switch {
+	case plain:
 		bunt.SetColorSettings(bunt.OFF, bunt.OFF)
+	case fi.Mode().IsRegular():
+		bunt.SetColorSettings(bunt.OFF, bunt.OFF)
+	case err != nil:
+		bunt.SetColorSettings(bunt.AUTO, bunt.AUTO)
+	default:
+		bunt.SetColorSettings(bunt.ON, bunt.ON)
 	}
 
 	localRenderFile, err := createInputFileFromString(localRender, toName)
