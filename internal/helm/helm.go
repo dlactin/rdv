@@ -27,7 +27,7 @@ import (
 
 var logMutex sync.Mutex
 
-// renderChart loads, merges values, and renders a Helm chart
+// RenderChart loads, merges values, and renders a Helm chart
 func RenderChart(chartPath, releaseName string, valuesFiles []string, opts options.CmdOptions) (string, error) {
 	chart, err := loadChart(chartPath, opts.Debug)
 	if err != nil {
@@ -241,11 +241,7 @@ func inflatedSubCharts(chartPath string) bool {
 	for _, subChart := range subCharts {
 		if subChart.IsDir() {
 			subChartPath := filepath.Join(chartPath, "charts", subChart.Name())
-			if IsHelmChart(subChartPath) {
-				return true
-			} else {
-				return false
-			}
+			return IsHelmChart(subChartPath)
 		}
 	}
 	return false
@@ -258,7 +254,7 @@ func lintChart(chartPath string, userValues chartutil.Values, debug bool) error 
 	settings := cli.New()
 	err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), "memory", log.Printf)
 	if err != nil {
-		return fmt.Errorf("failed to initialize Helm action config: %s", err)
+		return fmt.Errorf("failed to initialize Helm action config: %w", err)
 	}
 
 	lintClient := action.NewLint()
@@ -278,22 +274,30 @@ func lintChart(chartPath string, userValues chartutil.Values, debug bool) error 
 
 	if len(lintResults.Messages) > 0 {
 		if debug {
+			logMutex.Lock()
 			fmt.Printf("Linting results for chart at '%s':\n", chartPath)
+			logMutex.Unlock()
 		}
 		for _, msg := range lintResults.Messages {
 			// Print all severity messages if debug is enabled
 			if debug {
+				logMutex.Lock()
 				fmt.Printf("[%s] %s: %s\n", lintSev[msg.Severity], msg.Path, msg.Err)
+				logMutex.Unlock()
 			} else {
 				if msg.Severity >= support.WarningSev {
+					logMutex.Lock()
 					fmt.Printf("[%s] %s: %s\n", lintSev[msg.Severity], msg.Path, msg.Err)
+					logMutex.Unlock()
 				}
 			}
 		}
 
 	} else {
 		if debug {
+			logMutex.Lock()
 			fmt.Printf("Lint OK: All checks passed for chart at '%s'\n", chartPath)
+			logMutex.Unlock()
 		}
 	}
 	return nil
