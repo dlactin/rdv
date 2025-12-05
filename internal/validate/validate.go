@@ -13,7 +13,9 @@ import (
 	"github.com/yannh/kubeconform/pkg/validator"
 )
 
-func ValidateManifests(manifest string, debug bool) error {
+// Manifests will use kubeconform libraries and a default set of CRD Schemas
+// to validate rendered manifests
+func Manifests(manifest string, debug bool) error {
 	// We're not passing in any schemas here, we should grab this from an envvar
 	v, err := validator.New(nil, validator.Opts{
 		Strict:    true,

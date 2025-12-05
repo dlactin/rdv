@@ -1,17 +1,40 @@
 version: "2"
+
 run:
+  build-tags:
+    - integration
   allow-parallel-runners: true
+
 linters:
-  exclusions:
-    generated: lax
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
+  enable:
+    - errorlint
+    - gocognit
+    - revive
+
 formatters:
-  exclusions:
-    generated: lax
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
+  enable:
+    - goimports
+
+issues:
+  exclude-rules:
+    - path: _test\.go$
+      linters: [revive]
+
+linters-settings:
+  gocognit:
+    min-complexity: 20
+  revive:
+    severity: error
+    rules:
+      - name: error-naming
+      - name: exported
+      - name: import-shadowing
+      - name: line-length-limit
+        arguments: [150]
+      - name: modifies-parameter
+      - name: time-date
+  staticcheck:
+    checks:
+      - 'all'
+      - '-ST1020' # Methods returning unexported types (ok to keep)
+      - '-ST1021' # Methods returning unexported pointertypes (ok to keep)

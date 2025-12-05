@@ -67,7 +67,7 @@ and generates a colored diff comparing your local changes against a target Git r
 
 	rdv -p ./examples/kustomize/helloworld -r tags/v0.5.1
 	`,
-	PreRunE: func(cmd *cobra.Command, args []string) error {
+	PreRunE: func(_ *cobra.Command, _ []string) error {
 		log.SetFlags(0) // Disabling timestamps for log output
 
 		// A local git installation is required
@@ -110,7 +110,7 @@ and generates a colored diff comparing your local changes against a target Git r
 		return nil
 	},
 
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 
 		// Setup our options variable to pass into the render and diff functions
 		// We want lint enabled by default, but we'll override this for target ref
@@ -125,13 +125,13 @@ and generates a colored diff comparing your local changes against a target Git r
 		// Get the absolute path from the path flag
 		absPath, err := filepath.Abs(renderPathFlag)
 		if err != nil {
-			return fmt.Errorf("failed to resolve absolute path for -path %w", err)
+			return fmt.Errorf("failed to resolve absolute path for -path: %w", err)
 		}
 
 		// Get the relative path compared to the repoRoot)
 		relativePath, err := filepath.Rel(repoRoot, absPath)
 		if err != nil {
-			return fmt.Errorf("failed to resolve relative path for -path %w", err)
+			return fmt.Errorf("failed to resolve relative path for -path: %w", err)
 		}
 
 		if strings.HasPrefix(relativePath, "..") {
@@ -178,7 +178,7 @@ and generates a colored diff comparing your local changes against a target Git r
 
 			// Run local rendered manifests through kubeconform if --validate flag is passed
 			if validateFlag {
-				err = validate.ValidateManifests(localRender, opts.Debug)
+				err = validate.Manifests(localRender, opts.Debug)
 				if err != nil {
 					return err
 				}
@@ -220,12 +220,11 @@ and generates a colored diff comparing your local changes against a target Git r
 			if len(renderedDiff.Diffs) == 0 {
 				fmt.Println("\nNo differences found between rendered manifests.")
 				return nil
-			} else {
-				fmt.Printf("\n--- Diff (%s vs. local) ---", fullRef)
-				err := renderedDiff.WriteReport(os.Stdout)
-				if err != nil {
-					return err
-				}
+			}
+			fmt.Printf("\n--- Diff (%s vs. local) ---", fullRef)
+			err = renderedDiff.WriteReport(os.Stdout)
+			if err != nil {
+				return err
 			}
 		} else {
 			// Generate and Print our simple diff
@@ -237,7 +236,6 @@ and generates a colored diff comparing your local changes against a target Git r
 			} else {
 				fmt.Printf("\n--- Diff (%s vs. local) ---\n", fullRef)
 				fmt.Println(diff.ColorizeDiff(renderedDiff, plainFlag))
-
 			}
 		}
 

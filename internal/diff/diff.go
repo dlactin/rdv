@@ -2,6 +2,7 @@
 package diff
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -50,7 +51,7 @@ func RenderManifests(path string, values []string, opts options.CmdOptions) (str
 	return "", fmt.Errorf("path: %s is not a valid Helm Chart or Kustomization", path)
 }
 
-// createDiff generates a unified diff string between two text inputs.
+// CreateDiff generates a unified diff string between two text inputs.
 func CreateDiff(a, b string, fromName, toName string) string {
 	edits := myers.ComputeEdits(span.URI(fromName), a, b)
 	diff := gotextdiff.ToUnified(fromName, toName, a, edits)
@@ -58,7 +59,7 @@ func CreateDiff(a, b string, fromName, toName string) string {
 	return fmt.Sprint(diff)
 }
 
-// colorizeDiff adds simple ANSI colors to a diff string.
+// ColorizeDiff adds simple ANSI colors to a diff string.
 func ColorizeDiff(diff string, plain bool) string {
 	if plain {
 		return diff
@@ -87,7 +88,7 @@ func ColorizeDiff(diff string, plain bool) string {
 	return coloredDiff.String()
 }
 
-// This is more complex but k8s object aware diff engine
+// CreateSemanticDiff uses a more complex but k8s object aware diff engine
 // it is better suited for larger scale changes to a k8s resources
 func CreateSemanticDiff(targetRender, localRender, fromName, toName string, plain bool) (*dyff.HumanReport, error) {
 	// dyff is using bunt for text colouring
@@ -145,7 +146,7 @@ func createInputFileFromString(content string, location string) (ytbx.InputFile,
 	for {
 		var node yaml.Node
 		if err := decoder.Decode(&node); err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return ytbx.InputFile{}, fmt.Errorf("failed to decode YAML from %s: %w", location, err)

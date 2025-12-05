@@ -15,7 +15,7 @@ metadata:
 data:
   - not: "a map"
 `
-	err := ValidateManifests(manifest, false)
+	err := Manifests(manifest, false)
 	if err == nil {
 		t.Fatalf("expected validation error, got nil")
 	}
@@ -42,7 +42,7 @@ metadata:
 data:
   foo: bar
 `
-	err := ValidateManifests(manifest, false)
+	err := Manifests(manifest, false)
 	if err != nil {
 		t.Errorf("expected successful validation, got %s", err)
 	}
@@ -51,7 +51,7 @@ data:
 func TestValidateManifests_CompletelyInvalidYAML(t *testing.T) {
 	manifest := "not: [valid: yaml"
 
-	err := ValidateManifests(manifest, false)
+	err := Manifests(manifest, false)
 	if err == nil {
 		t.Fatal("expected validation error for malformed YAML, got nil")
 	}
@@ -65,7 +65,7 @@ func TestValidateManifests_EmptyManifest(t *testing.T) {
 	// kubeconform treats empty input as 0 resources
 	manifest := ""
 
-	if err := ValidateManifests(manifest, false); err != nil {
+	if err := Manifests(manifest, false); err != nil {
 		t.Fatalf("expected nil error for empty manifest, got: %v", err)
 	}
 }

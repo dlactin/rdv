@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+// SetupWorkTree creates a temporary git work tree we can use for checking out our references
 func SetupWorkTree(repoRoot, gitRef string) (string, func(), error) {
 	// Fetch from all remotes
 	fetchCmd := exec.Command("git", "fetch", "--all")
@@ -20,7 +21,7 @@ func SetupWorkTree(repoRoot, gitRef string) (string, func(), error) {
 	// Set up a Git Worktree for gitref
 	tempDir, err := os.MkdirTemp("", "diff-ref-")
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to create temp directory: %v", err)
+		return "", nil, fmt.Errorf("failed to create temp directory: %w", err)
 	}
 
 	// Combined worktree and tempdir cleanup
@@ -33,7 +34,7 @@ func SetupWorkTree(repoRoot, gitRef string) (string, func(), error) {
 			log.Printf("Warning: failed to run 'git worktree remove'. Manual cleanup may be required. Error: %v, Output: %s", err, string(output))
 		}
 		if err := os.RemoveAll(tempDir); err != nil {
-			fmt.Printf("error removing temporary directory %s: %v\n", tempDir, err)
+			log.Printf("Warning: error removing temporary directory %s: %v", tempDir, err)
 		}
 	}
 
@@ -42,7 +43,7 @@ func SetupWorkTree(repoRoot, gitRef string) (string, func(), error) {
 	addCmd := exec.Command("git", "worktree", "add", "-d", tempDir, gitRef)
 	addCmd.Dir = repoRoot
 	if output, err := addCmd.CombinedOutput(); err != nil {
-		return "", nil, fmt.Errorf("failed to create worktree for '%s': %v\nOutput: %s", gitRef, err, string(output))
+		return "", nil, fmt.Errorf("failed to create worktree for '%s': %w\nOutput: %s", gitRef, err, string(output))
 	}
 
 	return tempDir, cleanup, nil

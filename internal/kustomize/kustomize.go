@@ -36,6 +36,7 @@ func RenderKustomization(kustomizePath string) (string, error) {
 	return string(yamlBytes), nil
 }
 
+// IsKustomize checks to see if the target path contains kustomizations
 func IsKustomize(path string) bool {
 	opts := krusty.MakeDefaultOptions()
 	opts.PluginConfig.HelmConfig.Enabled = false
