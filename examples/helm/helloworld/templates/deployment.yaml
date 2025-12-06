@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   name: {{ include "helloworld.fullname" . }}
   labels:
+    argo: test
     {{- include "helloworld.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
