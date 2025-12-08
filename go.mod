@@ -7,7 +7,7 @@ require (
 	github.com/gonvenience/ytbx v1.4.7
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/homeport/dyff v1.10.2
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/yannh/kubeconform v0.7.0
 	golang.org/x/sync v0.18.0
