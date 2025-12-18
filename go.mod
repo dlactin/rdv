@@ -10,7 +10,7 @@ require (
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
 	github.com/yannh/kubeconform v0.7.0
-	golang.org/x/sync v0.18.0
+	golang.org/x/sync v0.19.0
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.19.2
 	sigs.k8s.io/kustomize/api v0.21.0
