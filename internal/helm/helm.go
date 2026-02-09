@@ -23,6 +23,7 @@ import (
 	"helm.sh/helm/v3/pkg/engine"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/lint/support"
+	"helm.sh/helm/v3/pkg/registry"
 )
 
 var logMutex sync.Mutex
@@ -62,12 +63,24 @@ func RenderChart(chartPath, releaseName string, valuesFiles []string, opts optio
 
 		getters := getter.All(settings)
 
+		// Create a registry client for OCI dependencies
+		registryClient, err := registry.NewClient(
+			registry.ClientOptDebug(settings.Debug),
+			registry.ClientOptEnableCache(true),
+			registry.ClientOptWriter(io.Discard),
+			registry.ClientOptCredentialsFile(settings.RegistryConfig),
+		)
+		if err != nil {
+			return "", fmt.Errorf("failed to create registry client: %w", err)
+		}
+
 		// Create a downloader manager.
 		man := downloader.Manager{
-			Out:       io.Discard,
-			ChartPath: chartPath,
-			Getters:   getters,
-			Debug:     opts.Debug,
+			Out:            io.Discard,
+			ChartPath:      chartPath,
+			Getters:        getters,
+			RegistryClient: registryClient,
+			Debug:          opts.Debug,
 		}
 
 		// Run update. This updates the Chart.lock file if dependencies have changed.
