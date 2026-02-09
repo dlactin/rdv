@@ -47,76 +47,9 @@ func RenderChart(chartPath, releaseName string, valuesFiles []string, opts optio
 	// Helm Dependency Build
 	// Run 'helm dependency build' if dependencies are present
 	if chart.Metadata.Dependencies != nil {
-		if opts.Debug {
-			log.Printf("Chart has dependencies, running 'helm dependency build' for: %s\n", chartPath)
-		}
-
-		if inflatedSubCharts(chartPath) {
-			logMutex.Lock()
-			log.Printf("Warning: inflated subcharts present in %s/charts — dependency updates may be skipped or inconsistent.", chartPath)
-			logMutex.Unlock()
-		}
-
-		// We need a basic cli.EnvSettings to init the getter.Providers.
-		settings := cli.New()
-		settings.Debug = opts.Debug // Setting debug to match flag
-
-		getters := getter.All(settings)
-
-		// Create a registry client for OCI dependencies
-		registryClient, err := registry.NewClient(
-			registry.ClientOptDebug(settings.Debug),
-			registry.ClientOptEnableCache(true),
-			registry.ClientOptWriter(io.Discard),
-			registry.ClientOptCredentialsFile(settings.RegistryConfig),
-		)
+		chart, err = buildDeps(chartPath, userValues, opts)
 		if err != nil {
-			return "", fmt.Errorf("failed to create registry client: %w", err)
-		}
-
-		// Create a downloader manager.
-		man := downloader.Manager{
-			Out:            io.Discard,
-			ChartPath:      chartPath,
-			Getters:        getters,
-			RegistryClient: registryClient,
-			Debug:          opts.Debug,
-		}
-
-		// Run update. This updates the Chart.lock file if dependencies have changed.
-		// Only used if the -u flag is passed.
-		if opts.UpdateDeps {
-			err = silentRun(opts.Debug, func() error {
-				return man.Update()
-			})
-			if err != nil {
-				return "", fmt.Errorf("failed to run dependency update: %w", err)
-			}
-		}
-
-		// Include Helm linting by default, after trying to load the chart, values files
-		// and any dependencies.
-		if opts.Lint {
-			err = lintChart(chartPath, userValues, opts.Debug)
-			if err != nil {
-				return "", fmt.Errorf("failed to run helm lint: %w", err)
-			}
-		}
-
-		// Run build. This downloads charts into the 'charts/' directory.
-		// We are ignoring some log output here, which can be reverted with the --debug flag
-		err = silentRun(opts.Debug, func() error {
-			return man.Build()
-		})
-		if err != nil {
-			return "", fmt.Errorf("failed to run dependency build: %w", err)
-		}
-
-		// Reload the chart after building dependencies
-		// This ensures the newly downloaded subcharts are included in the render.
-		chart, err = loadChart(chartPath, opts.Debug)
-		if err != nil {
-			return "", fmt.Errorf("failed to reload chart after dependency build: %w", err)
+			return "", fmt.Errorf("failed to load chart dependencies: %w", err)
 		}
 	}
 
@@ -164,6 +97,82 @@ func RenderChart(chartPath, releaseName string, valuesFiles []string, opts optio
 	}
 
 	return builder.String(), nil
+}
+
+// buildDeps downloads chart dependencies and returns a newly loaded chart
+func buildDeps(chartPath string, userValues chartutil.Values, opts options.CmdOptions) (*chart.Chart, error) {
+	if opts.Debug {
+		log.Printf("Chart has dependencies, running 'helm dependency build' for: %s\n", chartPath)
+	}
+
+	if inflatedSubCharts(chartPath) {
+		logMutex.Lock()
+		log.Printf("Warning: inflated subcharts present in %s/charts — dependency updates may be skipped or inconsistent.", chartPath)
+		logMutex.Unlock()
+	}
+
+	// We need a basic cli.EnvSettings to init the getter.Providers.
+	settings := cli.New()
+	settings.Debug = opts.Debug // Setting debug to match flag
+
+	getters := getter.All(settings)
+
+	// Create a registry client for OCI dependencies
+	registryClient, err := registry.NewClient(
+		registry.ClientOptDebug(settings.Debug),
+		registry.ClientOptEnableCache(true),
+		registry.ClientOptWriter(io.Discard),
+		registry.ClientOptCredentialsFile(settings.RegistryConfig),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create registry client: %w", err)
+	}
+
+	// Create a downloader manager.
+	man := downloader.Manager{
+		Out:            io.Discard,
+		ChartPath:      chartPath,
+		Getters:        getters,
+		RegistryClient: registryClient,
+		Debug:          opts.Debug,
+	}
+
+	// Run update. This updates the Chart.lock file if dependencies have changed.
+	// Only used if the -u flag is passed.
+	if opts.UpdateDeps {
+		err = silentRun(opts.Debug, func() error {
+			return man.Update()
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to run dependency update: %w", err)
+		}
+	}
+
+	// Include Helm linting by default, after trying to load the chart, values files
+	// and any dependencies.
+	if opts.Lint {
+		err = lintChart(chartPath, userValues, opts.Debug)
+		if err != nil {
+			return nil, fmt.Errorf("failed to run helm lint: %w", err)
+		}
+	}
+
+	// Run build. This downloads charts into the 'charts/' directory.
+	// We are ignoring some log output here, which can be reverted with the --debug flag
+	err = silentRun(opts.Debug, func() error {
+		return man.Build()
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to run dependency build: %w", err)
+	}
+
+	// Reload the chart after building dependencies
+	// This ensures the newly downloaded subcharts are included in the render.
+	chart, err := loadChart(chartPath, opts.Debug)
+	if err != nil {
+		return nil, fmt.Errorf("failed to reload chart after dependency build: %w", err)
+	}
+	return chart, nil
 }
 
 // loadValues merges multiple values files in order, mimicking 'helm -f file1 -f file2'
