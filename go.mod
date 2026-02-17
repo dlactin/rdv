@@ -1,17 +1,17 @@
 module github.com/dlactin/rdv
 
-go 1.24.9
+go 1.25
 
 require (
 	github.com/gonvenience/bunt v1.4.3
-	github.com/gonvenience/ytbx v1.4.7
+	github.com/gonvenience/ytbx v1.4.8
 	github.com/hexops/gotextdiff v1.0.3
-	github.com/homeport/dyff v1.10.3
+	github.com/homeport/dyff v1.10.4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/yannh/kubeconform v0.7.0
+	go.yaml.in/yaml/v3 v3.0.4
 	golang.org/x/sync v0.19.0
-	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.19.4
 	sigs.k8s.io/kustomize/api v0.21.1
 	sigs.k8s.io/kustomize/kyaml v0.21.1
@@ -48,10 +48,10 @@ require (
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/gonvenience/idem v0.0.2 // indirect
-	github.com/gonvenience/neat v1.3.16 // indirect
-	github.com/gonvenience/term v1.0.4 // indirect
-	github.com/gonvenience/text v1.0.9 // indirect
+	github.com/gonvenience/idem v0.0.3 // indirect
+	github.com/gonvenience/neat v1.3.17 // indirect
+	github.com/gonvenience/term v1.0.5 // indirect
+	github.com/gonvenience/text v1.0.10 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
@@ -107,8 +107,7 @@ require (
 	github.com/virtuald/go-ordered-json v0.0.0-20170621173500-b18e6e673d74 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
-	go.yaml.in/yaml/v2 v2.4.2 // indirect
-	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	golang.org/x/crypto v0.47.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
@@ -121,7 +120,7 @@ require (
 	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/api v0.34.2 // indirect
 	k8s.io/apiextensions-apiserver v0.34.2 // indirect
 	k8s.io/apimachinery v0.34.2 // indirect
