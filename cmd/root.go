@@ -68,10 +68,20 @@ and generates a colored diff comparing your local changes against a target Git r
 	rdv -p ./examples/kustomize/helloworld -r tags/v0.5.1
 	`,
 	PreRunE: func(_ *cobra.Command, _ []string) error {
+		// Check if there is a more recent version of rdv released
+		// and print update message
+		updateAvailable, updateMsg, err := updateRequired()
+		if err != nil {
+			return fmt.Errorf("error checking for rdv updates")
+		}
+		if updateAvailable {
+			fmt.Print(updateMsg)
+		}
+
 		log.SetFlags(0) // Disabling timestamps for log output
 
 		// A local git installation is required
-		_, err := exec.LookPath("git")
+		_, err = exec.LookPath("git")
 		if err != nil {
 			return fmt.Errorf("git not found in PATH: %w", err)
 		}
