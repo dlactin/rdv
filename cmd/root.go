@@ -72,7 +72,7 @@ and generates a colored diff comparing your local changes against a target Git r
 		// and print update message
 		updateAvailable, updateMsg, err := updateRequired()
 		if err != nil {
-			return fmt.Errorf("error checking for rdv updates")
+			return fmt.Errorf("error checking for rdv updates: %w", err)
 		}
 		if updateAvailable {
 			fmt.Print(updateMsg)
