@@ -5,12 +5,14 @@ go 1.25.0
 require (
 	github.com/gonvenience/bunt v1.4.3
 	github.com/gonvenience/ytbx v1.4.8
+	github.com/google/go-github/v84 v84.0.0
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/homeport/dyff v1.11.2
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/yannh/kubeconform v0.7.0
 	go.yaml.in/yaml/v3 v3.0.4
+	golang.org/x/mod v0.33.0
 	golang.org/x/sync v0.20.0
 	helm.sh/helm/v3 v3.20.0
 	sigs.k8s.io/kustomize/api v0.21.1
@@ -54,7 +56,6 @@ require (
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/go-github/v84 v84.0.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gosuri/uitable v0.0.4 // indirect

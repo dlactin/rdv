@@ -6,9 +6,14 @@ import (
 	"regexp"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v84/github"
+	"golang.org/x/mod/semver"
 )
+
+// Semver regex for release version comparison
+var semanticVersion = regexp.MustCompile(`^v(\d{1,3}\.?)+`)
 
 // getVersion return the application version
 func getVersion() string {
@@ -18,16 +23,9 @@ func getVersion() string {
 		return "development"
 	}
 
-	// Semver regex for release version comparison
-	semver, err := regexp.Compile(`^v(\d{1,3}\.?)+`)
-	if err != nil {
-		// return standard version by default if regex fails
-		return version
-	}
-
 	// Grab the expected semver rdv version number
 	// ex. v0.14.0
-	sanitizedVersion := semver.FindString(version)
+	sanitizedVersion := semanticVersion.FindString(version)
 
 	return sanitizedVersion
 }
@@ -39,7 +37,10 @@ func getLatest() (string, error) {
 	owner, repo := getSourceRepo()
 	client := github.NewClient(nil)
 
-	latestRelease, _, err := client.Repositories.GetLatestRelease(context.Background(), owner, repo)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	latestRelease, _, err := client.Repositories.GetLatestRelease(ctx, owner, repo)
 	if err != nil {
 		return "", fmt.Errorf("failed to find latest release: %w", err)
 	}
@@ -61,6 +62,10 @@ func getSourceRepo() (string, string) {
 
 func updateRequired() (bool, string, error) {
 	currentVersion := getVersion()
+	if currentVersion == "" {
+		return false, "", nil
+	}
+
 	latestVersion, err := getLatest()
 	if err != nil {
 		return false, "", err
@@ -73,7 +78,9 @@ Run: go install github.com/dlactin/rdv@%s
 
 `, latestVersion)
 
-	if currentVersion < latestVersion {
+	// Use proper semver comparison instead of string comparison
+	// semver.Compare returns -1 if v < w, 0 if v == w, +1 if v > w
+	if semver.Compare(currentVersion, latestVersion) < 0 {
 		return true, updateMsg, nil
 	}
 
