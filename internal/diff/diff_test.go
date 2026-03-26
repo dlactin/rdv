@@ -1,6 +1,9 @@
 package diff
 
 import (
+	"bytes"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -131,6 +134,63 @@ func TestCreateDiff(t *testing.T) {
 			got := CreateDiff(tc.a, tc.b, tc.fromName, tc.toName)
 			if strings.TrimSpace(got) != strings.TrimSpace(tc.want) {
 				t.Errorf("CreateDiff() =\n%q\nWant:\n%q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestPrintChangeSummary(t *testing.T) {
+	tests := []struct {
+		name     string
+		yaml1    string
+		yaml2    string
+		expected string
+	}{
+		{
+			name:     "Addition",
+			yaml1:    "",
+			yaml2:    "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\ndata:\n  key: value",
+			expected: "Summary: 1 change (1 added)",
+		},
+		{
+			name:     "Removal",
+			yaml1:    "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\ndata:\n  key: value",
+			yaml2:    "",
+			expected: "Summary: 1 change (1 removed)",
+		},
+		{
+			name:     "Update",
+			yaml1:    "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\ndata:\n  key: value",
+			yaml2:    "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\ndata:\n  key: modified",
+			expected: "Summary: 1 change (1 updated)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			report, _ := CreateSemanticDiff(tt.yaml1, tt.yaml2, "old", "new", true)
+
+			// Capture output
+			old := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			if err := PrintChangeSummary(report.Report); err != nil {
+				t.Errorf("PrintChangeSummary() error = %v", err)
+			}
+
+			if err := w.Close(); err != nil {
+				t.Errorf("w.Close() error = %v", err)
+			}
+			var buf bytes.Buffer
+			if _, err := io.Copy(&buf, r); err != nil {
+				t.Errorf("io.Copy() error = %v", err)
+			}
+			os.Stdout = old
+
+			output := buf.String()
+			if !strings.Contains(output, tt.expected) {
+				t.Errorf("Expected summary %q not found in output:\n%s", tt.expected, output)
 			}
 		})
 	}
