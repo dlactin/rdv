@@ -49,10 +49,17 @@ func getLatest() (string, error) {
 
 // getSourceRepo returns the owner and repository from build info
 func getSourceRepo() (string, string) {
-	buildInfo, _ := debug.ReadBuildInfo()
+	buildInfo, ok := debug.ReadBuildInfo()
+	if !ok || buildInfo.Main.Path == "" || buildInfo.Main.Path == "command-line-arguments" {
+		return "dlactin", "rdv"
+	}
 
 	module := buildInfo.Main.Path
 	details := strings.Split(module, "/")
+
+	if len(details) < 3 {
+		return "dlactin", "rdv"
+	}
 
 	owner := details[1]
 	repo := details[2]

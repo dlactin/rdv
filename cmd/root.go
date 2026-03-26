@@ -5,6 +5,7 @@ package cmd
 //go:generate go run ../internal/tools/docgen/main.go
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -34,7 +35,8 @@ var (
 	debugFlag        bool
 	validateFlag     bool
 	semanticDiffFlag bool
-	plainFlag        bool
+	noColorFlag      bool
+	githubFlag       bool
 	outputPathFlag   string
 
 	repoRoot string
@@ -75,7 +77,7 @@ and generates a colored diff comparing your local changes against a target Git r
 			return fmt.Errorf("error checking for rdv updates: %w", err)
 		}
 		if updateAvailable {
-			fmt.Print(updateMsg)
+			fmt.Fprint(os.Stderr, updateMsg)
 		}
 
 		log.SetFlags(0) // Disabling timestamps for log output
@@ -221,20 +223,53 @@ and generates a colored diff comparing your local changes against a target Git r
 		}
 
 		if semanticDiffFlag {
+			// If github flag is passed, we should also enable plain/no-color mode
+			// and override our output logic
+			if githubFlag {
+				noColorFlag = true
+			}
+
 			// We are using a more complex diff engine (dyff) which is better suited for k8s manifest comparison
-			renderedDiff, err := diff.CreateSemanticDiff(targetRender, localRender, fmt.Sprintf("%s/%s", fullRef, relativePath), fmt.Sprintf("local/%s", relativePath), plainFlag)
+			renderedDiff, err := diff.CreateSemanticDiff(targetRender, localRender, fmt.Sprintf("%s/%s", fullRef, relativePath), fmt.Sprintf("local/%s", relativePath), noColorFlag)
 			if err != nil {
 				return fmt.Errorf("error creating dyff: %w", err)
 			}
 
 			if len(renderedDiff.Diffs) == 0 {
-				fmt.Println("\nNo differences found between rendered manifests.")
+				fmt.Fprintln(os.Stderr, "\nNo differences found between rendered manifests.")
 				return nil
 			}
-			fmt.Printf("\n--- Diff (%s vs. local) ---", fullRef)
-			err = renderedDiff.WriteReport(os.Stdout)
-			if err != nil {
-				return err
+
+			if githubFlag {
+				// Print summary of changed objects in GitHub format
+				err = diff.PrintChangeSummary(renderedDiff.Report, true)
+				if err != nil {
+					return fmt.Errorf("error printing summary: %w", err)
+				}
+				fmt.Println("<details>\n\n```diff")
+
+				// Capture the dyff report to post-process it for GitHub diff syntax
+				var buf bytes.Buffer
+				err = renderedDiff.WriteReport(&buf)
+				if err != nil {
+					return err
+				}
+				fmt.Println(diff.FixGitHubDiffOutput(buf.String()))
+				fmt.Println("```\n</details>")
+			} else {
+				fmt.Printf("\n--- Diff (%s vs. local) ---", fullRef)
+
+				// Print the full report
+				err = renderedDiff.WriteReport(os.Stdout)
+				if err != nil {
+					return err
+				}
+
+				// Print summary of changed objects
+				err = diff.PrintChangeSummary(renderedDiff.Report, false)
+				if err != nil {
+					return fmt.Errorf("error printing summary: %w", err)
+				}
 			}
 		} else {
 			// Generate and Print our simple diff
@@ -242,10 +277,10 @@ and generates a colored diff comparing your local changes against a target Git r
 			renderedDiff := diff.CreateDiff(targetRender, localRender, fmt.Sprintf("%s/%s", fullRef, relativePath), fmt.Sprintf("local/%s", relativePath))
 
 			if renderedDiff == "" {
-				fmt.Println("\nNo differences found between rendered manifests.")
+				fmt.Fprintln(os.Stderr, "\nNo differences found between rendered manifests.")
 			} else {
 				fmt.Printf("\n--- Diff (%s vs. local) ---\n", fullRef)
-				fmt.Println(diff.ColorizeDiff(renderedDiff, plainFlag))
+				fmt.Println(diff.ColorizeDiff(renderedDiff, noColorFlag))
 			}
 		}
 
@@ -271,7 +306,7 @@ and generates a colored diff comparing your local changes against a target Git r
 				return fmt.Errorf("failed to write output file to %s: %w", outputPathFlag, err)
 			}
 
-			fmt.Printf("Rendered manifest saved to: %s\n", outputPathFlag)
+			fmt.Fprintf(os.Stderr, "Rendered manifest saved to: %s\n", outputPathFlag)
 		}
 
 		return nil
@@ -314,8 +349,9 @@ func init() {
 	outputFlags.SortFlags = false
 
 	outputFlags.BoolVarP(&semanticDiffFlag, "semantic", "s", false, "Enable semantic diffing of k8s manifests (using dyff)")
+	outputFlags.BoolVarP(&githubFlag, "github", "g", false, "Output format optimized for GitHub PR comments")
 	outputFlags.StringVarP(&outputPathFlag, "output", "o", "", "Write the local and target rendered manifests to a specific file path")
-	outputFlags.BoolVar(&plainFlag, "plain", false, "Output in plain style without any highlighting")
+	outputFlags.BoolVar(&noColorFlag, "no-color", false, "Output in plain style without any highlighting")
 	outputFlags.BoolVar(&debugFlag, "debug", false, "Enable verbose logging for debugging")
 
 	// Add our custom flagsets to our rootCMD

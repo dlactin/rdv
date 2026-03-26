@@ -29,10 +29,11 @@ go install github.com/dlactin/rdv@latest
 | Flag | Shorthand | Description | Default |
 | :--- | :--- | :--- | :--- |
 | `--debug` | `—` | Enable verbose logging for debugging | `false` |
+| `--github` | `g` | Output format optimized for GitHub PR comments | `false` |
 | `--help` | `h` | help for rdv | `false` |
+| `--no-color` | `—` | Output in plain style without any highlighting | `false` |
 | `--output` | `o` | Write the local and target rendered manifests to a specific file path | `—` |
 | `--path` | `p` | Relative path to the chart or kustomization directory | `.` |
-| `--plain` | `—` | Output in plain style without any highlighting | `false` |
 | `--ref` | `r` | Target Git ref to compare against. Will try to find its remote-tracking branch (e.g., origin/main) | `main` |
 | `--semantic` | `s` | Enable semantic diffing of k8s manifests (using dyff) | `false` |
 | `--update` | `u` | Update Helm chart dependencies. Required if lockfile does not match dependencies | `false` |

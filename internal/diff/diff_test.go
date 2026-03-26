@@ -175,7 +175,7 @@ func TestPrintChangeSummary(t *testing.T) {
 			r, w, _ := os.Pipe()
 			os.Stdout = w
 
-			if err := PrintChangeSummary(report.Report); err != nil {
+			if err := PrintChangeSummary(report.Report, false); err != nil {
 				t.Errorf("PrintChangeSummary() error = %v", err)
 			}
 
@@ -191,6 +191,114 @@ func TestPrintChangeSummary(t *testing.T) {
 			output := buf.String()
 			if !strings.Contains(output, tt.expected) {
 				t.Errorf("Expected summary %q not found in output:\n%s", tt.expected, output)
+			}
+		})
+	}
+
+	t.Run("GitHub format", func(t *testing.T) {
+		yaml1 := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\ndata:\n  key: value"
+		yaml2 := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\ndata:\n  key: modified"
+		expected := "**Summary: 1 change (1 updated)**"
+
+		report, _ := CreateSemanticDiff(yaml1, yaml2, "old", "new", true)
+
+		// Capture output
+		old := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		if err := PrintChangeSummary(report.Report, true); err != nil {
+			t.Errorf("PrintChangeSummary() error = %v", err)
+		}
+
+		if err := w.Close(); err != nil {
+			t.Errorf("w.Close() error = %v", err)
+		}
+		var buf bytes.Buffer
+		if _, err := io.Copy(&buf, r); err != nil {
+			t.Errorf("io.Copy() error = %v", err)
+		}
+		os.Stdout = old
+
+		output := buf.String()
+		if !strings.Contains(output, expected) {
+			t.Errorf("Expected GitHub summary %q not found in output:\n%s", expected, output)
+		}
+	})
+}
+
+func TestFixGitHubDiffOutput(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name: "Document removal",
+			input: `
+/
+- one document removed:
+---
+apiVersion: v1
+kind: Service
+`,
+			expected: `
+/
+----
+-apiVersion: v1
+-kind: Service
+`,
+		},
+		{
+			name: "Value change",
+			input: `
+/data/key
+± value change
+- old
++ new
+`,
+			expected: `
+/data/key
+± value change
+- old
++ new
+`,
+		},
+		{
+			name: "Multiple changes with blank lines",
+			input: `
+/
+- one document removed:
+---
+apiVersion: v1
+
+kind: Service
+
+/data/key
+± value change
+- old
++ new
+`,
+			expected: `
+/
+----
+-apiVersion: v1
+
+-kind: Service
+
+/data/key
+± value change
+- old
++ new
+`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FixGitHubDiffOutput(strings.TrimSpace(tt.input))
+			if strings.TrimSpace(got) != strings.TrimSpace(tt.expected) {
+				t.Errorf("FixGitHubDiffOutput() = %q, want %q", got, tt.expected)
 			}
 		})
 	}

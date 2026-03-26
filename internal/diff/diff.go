@@ -203,7 +203,7 @@ func sortedMapValues(m map[int]string) []string {
 }
 
 // PrintChangeSummary prints a concise summary of changes categorized by type
-func PrintChangeSummary(report dyff.Report) error {
+func PrintChangeSummary(report dyff.Report, isGitHub bool) error {
 	added, removed, modified := categorizeDiffs(report.Diffs)
 
 	addedCount := len(added)
@@ -231,10 +231,15 @@ func PrintChangeSummary(report dyff.Report) error {
 		changeStr = "changes"
 	}
 
-	fmt.Printf("\nSummary: %d %s (%s)\n",
+	summaryFormat := "\nSummary: %d %s (%s)\n"
+	if isGitHub {
+		summaryFormat = "**Summary: %d %s (%s)**\n"
+	}
+
+	fmt.Printf(strings.TrimRight(summaryFormat, " \t\r\n")+"\n",
 		totalObjects, changeStr, strings.Join(parts, ", "))
 
-	printDetailedLists(modified, added, removed)
+	printDetailedLists(modified, added, removed, isGitHub)
 
 	return nil
 }
@@ -277,7 +282,14 @@ func categorizeDiffs(diffs []dyff.Diff) (added, removed, modified map[int]string
 	return added, removed, modified
 }
 
-func printDetailedLists(modified, added, removed map[int]string) {
+func printDetailedLists(modified, added, removed map[int]string, isGitHub bool) {
+	listMarker := "  -"
+	categoryMarker := ""
+	if isGitHub {
+		listMarker = "    -"
+		categoryMarker = "*"
+	}
+
 	categories := []struct {
 		title string
 		m     map[int]string
@@ -289,10 +301,65 @@ func printDetailedLists(modified, added, removed map[int]string) {
 
 	for _, cat := range categories {
 		if len(cat.m) > 0 {
-			fmt.Printf("\n%s\n", cat.title)
+			fmt.Printf("\n%s%s\n", categoryMarker, cat.title)
 			for _, id := range sortedMapValues(cat.m) {
-				fmt.Printf("  - %s\n", id)
+				if isGitHub {
+					fmt.Printf("%s `%s`\n", listMarker, id)
+				} else {
+					fmt.Printf("%s %s\n", listMarker, id)
+				}
 			}
 		}
 	}
+}
+
+// FixGitHubDiffOutput post-processes the dyff report output to ensure that
+// document-level changes have the necessary +/- symbols for GitHub's diff
+// syntax highlighting. dyff's "human" report format normally omits these
+// symbols for the contents of added/removed documents.
+func FixGitHubDiffOutput(report string) string {
+	report = strings.TrimSpace(report)
+	lines := strings.Split(report, "\n")
+	var result []string
+	prefix := ""
+
+	for _, line := range lines {
+		// Trim trailing whitespace from the line before processing
+		line = strings.TrimRight(line, " \t\r")
+		trimmed := strings.TrimSpace(line)
+
+		// Block headers start a new section, stop prefixing
+		// dyff headers for field changes start with / (path) or ± (change type)
+		if strings.HasPrefix(trimmed, "/") || strings.HasPrefix(trimmed, "±") {
+			prefix = ""
+		}
+
+		// Detect document status lines
+		// We use HasSuffix because there might be some leading indentation
+		isRemovalHeader := strings.HasSuffix(trimmed, "one document removed:")
+		isAdditionHeader := strings.HasSuffix(trimmed, "one document added:")
+
+		if isRemovalHeader {
+			prefix = "-"
+			continue
+		} else if isAdditionHeader {
+			prefix = "+"
+			continue
+		}
+
+		// If we are in a document-level change block, prefix the line
+		// but skip prefixing the header itself to avoid "-- one document removed:"
+		if prefix != "" && trimmed != "" {
+			// Prefix every line including blank ones to maintain the block
+			result = append(result, prefix+line)
+		} else {
+			// Collapse multiple consecutive blank lines
+			if trimmed == "" && len(result) > 0 && result[len(result)-1] == "" {
+				continue
+			}
+			result = append(result, line)
+		}
+	}
+
+	return strings.TrimSpace(strings.Join(result, "\n"))
 }
