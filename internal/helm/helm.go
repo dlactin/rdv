@@ -297,19 +297,19 @@ func lintChart(chartPath string, userValues chartutil.Values, debug bool) error 
 	if len(lintResults.Messages) > 0 {
 		if debug {
 			logMutex.Lock()
-			fmt.Printf("Linting results for chart at '%s':\n", chartPath)
+			fmt.Fprintf(os.Stderr, "Linting results for chart at '%s':\n", chartPath)
 			logMutex.Unlock()
 		}
 		for _, msg := range lintResults.Messages {
 			// Print all severity messages if debug is enabled
 			if debug {
 				logMutex.Lock()
-				fmt.Printf("[%s] %s: %s\n", lintSev[msg.Severity], msg.Path, msg.Err)
+				fmt.Fprintf(os.Stderr, "[%s] %s: %s\n", lintSev[msg.Severity], msg.Path, msg.Err)
 				logMutex.Unlock()
 			} else {
 				if msg.Severity >= support.WarningSev {
 					logMutex.Lock()
-					fmt.Printf("[%s] %s: %s\n", lintSev[msg.Severity], msg.Path, msg.Err)
+					fmt.Fprintf(os.Stderr, "[%s] %s: %s\n", lintSev[msg.Severity], msg.Path, msg.Err)
 					logMutex.Unlock()
 				}
 			}
@@ -318,7 +318,7 @@ func lintChart(chartPath string, userValues chartutil.Values, debug bool) error 
 	} else {
 		if debug {
 			logMutex.Lock()
-			fmt.Printf("Lint OK: All checks passed for chart at '%s'\n", chartPath)
+			fmt.Fprintf(os.Stderr, "Lint OK: All checks passed for chart at '%s'\n", chartPath)
 			logMutex.Unlock()
 		}
 	}
