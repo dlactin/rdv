@@ -2,20 +2,30 @@
 package git
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 // SetupWorkTree creates a temporary git work tree we can use for checking out our references
 func SetupWorkTree(repoRoot, gitRef string) (string, func(), error) {
-	// Fetch from all remotes
-	fetchCmd := exec.Command("git", "fetch", "--all")
+	// Fetch from all remotes with 5s timeout
+	// In case of timeout or failure, we'll continue with existing local state
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	fetchCmd := exec.CommandContext(ctx, "git", "fetch", "--all")
 	fetchCmd.Dir = repoRoot
 	if output, err := fetchCmd.CombinedOutput(); err != nil {
-		return "", nil, fmt.Errorf("failed to run 'git fetch --all': %w\nOutput: %s", err, string(output))
+		if ctx.Err() == context.DeadlineExceeded {
+			log.Printf("Warning: 'git fetch --all' timed out after 5s. Proceeding with existing local state.")
+		} else {
+			log.Printf("Warning: 'git fetch --all' failed: %v. Output: %s. Proceeding with existing local state.", err, string(output))
+		}
 	}
 
 	// Set up a Git Worktree for gitref
