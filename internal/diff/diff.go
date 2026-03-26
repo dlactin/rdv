@@ -60,8 +60,8 @@ func CreateDiff(a, b string, fromName, toName string) string {
 }
 
 // ColorizeDiff adds simple ANSI colors to a diff string.
-func ColorizeDiff(diff string, plain bool) string {
-	if plain {
+func ColorizeDiff(diff string, noColor bool) string {
+	if noColor {
 		return diff
 	}
 	var coloredDiff strings.Builder
@@ -90,13 +90,13 @@ func ColorizeDiff(diff string, plain bool) string {
 
 // CreateSemanticDiff uses a more complex but k8s object aware diff engine
 // it is better suited for larger scale changes to a k8s resources
-func CreateSemanticDiff(targetRender, localRender, fromName, toName string, plain bool) (*dyff.HumanReport, error) {
+func CreateSemanticDiff(targetRender, localRender, fromName, toName string, noColor bool) (*dyff.HumanReport, error) {
 	// dyff is using bunt for text colouring
-	// plain flag & writing to a file turns colours off
+	// noColor flag & writing to a file turns colours off
 	// defaults to ON or AUTO if we get an error
 	fi, err := os.Stdout.Stat()
 	switch {
-	case plain:
+	case noColor:
 		bunt.SetColorSettings(bunt.OFF, bunt.OFF)
 	case fi.Mode().IsRegular():
 		bunt.SetColorSettings(bunt.OFF, bunt.OFF)
@@ -158,4 +158,141 @@ func createInputFileFromString(content string, location string) (ytbx.InputFile,
 		Location:  location,
 		Documents: docs,
 	}, nil
+}
+
+// getDocumentName extracts the name from a Diff path
+// It uses the RootDescription which contains the K8s resource identifier
+func getDocumentNameFromDiff(diff dyff.Diff) string {
+	// The Path.RootDescription() contains the K8s resource identifier
+	// Example: "apps/v1/Deployment/helloworld"
+	desc := diff.Path.RootDescription()
+
+	if desc != "" {
+		// Remove parentheses if present: "(apps/v1/Deployment/helloworld)" -> "apps/v1/Deployment/helloworld"
+		return strings.Trim(desc, "()")
+	}
+
+	return "unknown"
+}
+
+// sortedMapValues returns the values from a map[int]string sorted by key
+func sortedMapValues(m map[int]string) []string {
+	// Get keys and sort them
+	keys := make([]int, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+
+	// Simple insertion sort since we expect small numbers of documents
+	for i := 1; i < len(keys); i++ {
+		key := keys[i]
+		j := i - 1
+		for j >= 0 && keys[j] > key {
+			keys[j+1] = keys[j]
+			j--
+		}
+		keys[j+1] = key
+	}
+
+	// Build result array
+	result := make([]string, len(keys))
+	for i, k := range keys {
+		result[i] = m[k]
+	}
+	return result
+}
+
+// PrintChangeSummary prints a concise summary of changes categorized by type
+func PrintChangeSummary(report dyff.Report) error {
+	added, removed, modified := categorizeDiffs(report.Diffs)
+
+	addedCount := len(added)
+	removedCount := len(removed)
+	modifiedCount := len(modified)
+	totalObjects := addedCount + removedCount + modifiedCount
+
+	var parts []string
+	if modifiedCount > 0 {
+		parts = append(parts, fmt.Sprintf("%d updated", modifiedCount))
+	}
+	if addedCount > 0 {
+		parts = append(parts, fmt.Sprintf("%d added", addedCount))
+	}
+	if removedCount > 0 {
+		parts = append(parts, fmt.Sprintf("%d removed", removedCount))
+	}
+
+	if len(parts) == 0 {
+		return nil
+	}
+
+	changeStr := "change"
+	if totalObjects != 1 {
+		changeStr = "changes"
+	}
+
+	fmt.Printf("\nSummary: %d %s (%s)\n",
+		totalObjects, changeStr, strings.Join(parts, ", "))
+
+	printDetailedLists(modified, added, removed)
+
+	return nil
+}
+
+func categorizeDiffs(diffs []dyff.Diff) (added, removed, modified map[int]string) {
+	added = make(map[int]string)
+	removed = make(map[int]string)
+	modified = make(map[int]string)
+
+	for _, diff := range diffs {
+		docIdx := diff.Path.DocumentIdx
+		docName := getDocumentNameFromDiff(diff)
+		isDocumentLevel := len(diff.Path.PathElements) == 0
+
+		for _, detail := range diff.Details {
+			switch detail.Kind {
+			case dyff.ADDITION:
+				if isDocumentLevel || detail.From == nil {
+					added[docIdx] = docName
+				} else {
+					modified[docIdx] = docName
+				}
+			case dyff.REMOVAL:
+				if isDocumentLevel || detail.To == nil {
+					removed[docIdx] = docName
+				} else {
+					modified[docIdx] = docName
+				}
+			case dyff.MODIFICATION, dyff.ORDERCHANGE:
+				modified[docIdx] = docName
+			}
+		}
+	}
+
+	for docIdx := range modified {
+		delete(added, docIdx)
+		delete(removed, docIdx)
+	}
+
+	return added, removed, modified
+}
+
+func printDetailedLists(modified, added, removed map[int]string) {
+	categories := []struct {
+		title string
+		m     map[int]string
+	}{
+		{"Updated:", modified},
+		{"Added:", added},
+		{"Removed:", removed},
+	}
+
+	for _, cat := range categories {
+		if len(cat.m) > 0 {
+			fmt.Printf("\n%s\n", cat.title)
+			for _, id := range sortedMapValues(cat.m) {
+				fmt.Printf("  - %s\n", id)
+			}
+		}
+	}
 }
