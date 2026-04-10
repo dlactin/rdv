@@ -1,6 +1,6 @@
 site_name: RDV
 site_description: Render, Diff, and Validate GitOps changes
-site_url: https://dlactin.github.io/rdv/
+site_url: https://rdv.lactin.ca/
 
 theme:
   name: material
@@ -30,7 +30,7 @@ theme:
 
 extra:
   version:
-    method: mike
+    provider: mike
 
 repo_url: https://github.com/dlactin/rdv
 repo_name: dlactin/rdv
@@ -53,3 +53,4 @@ markdown_extensions:
 
 plugins:
   - search
+  - mike
