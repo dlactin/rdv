@@ -1,32 +1,9 @@
-# RDV (render-diff-validate)
-[![Release Version](https://img.shields.io/github/v/release/dlactin/rdv?label=release)](https://github.com/dlactin/rdv/releases/latest)
-[![Build](https://github.com/dlactin/rdv/workflows/CI/badge.svg)](https://github.com/dlactin/rdv/actions?query=workflow%3A"CI")
-[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg)](https://dlactin.github.io/rdv/)
-[![Go Report Card](https://goreportcard.com/badge/github.com/dlactin/rdv)](https://goreportcard.com/badge/github.com/dlactin/rdv)
-[![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
+# Usage
 
-`rdv` lets you preview your GitOps changes without committing rendered manifests.
+This must be run while your current directory is within your git repository.
 
-It renders your local Helm chart or Kustomize overlay, optionally validates the output with kubeconform, and compares the results against a target git ref (such as `main` or `develop`).
+## Flags
 
-A coloured diff shows exactly what will change before you push.
-
-![RDV Default Diff](docs/assets/rdv-default-ex.gif)
-
-## Requirements
-* `make`
-* `git`
-* Go `1.24` or newer
-
-## Installation
-
-You can install `rdv` directly using `go install`:
-
-```sh
-go install github.com/dlactin/rdv@latest
-```
-
-# Flags
 | Flag | Shorthand | Description | Default |
 | :--- | :--- | :--- | :--- |
 | `--debug` | `—` | Enable verbose logging for debugging | `false` |
@@ -42,8 +19,7 @@ go install github.com/dlactin/rdv@latest
 | `--values` | `f` | Path to an additional values file (can be specified multiple times) | `[]` |
 | `--version` | `—` | version for rdv | `false` |
 
-# Examples
-This must be run while your current directory is within your git repository
+## Examples
 
 ### Checking a Helm Chart diff against another target ref
 
@@ -68,4 +44,3 @@ rdv -p ./examples/kustomize/helloworld -s
 ```bash
 rdv -p ./examples/kustomize/helloworld -r tags/v0.5.1
 ```
-	
