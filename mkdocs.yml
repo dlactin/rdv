@@ -28,10 +28,6 @@ theme:
     - search.highlight
     - content.code.copy
 
-extra:
-  version:
-    provider: mike
-
 repo_url: https://github.com/dlactin/rdv
 repo_name: dlactin/rdv
 
@@ -53,4 +49,3 @@ markdown_extensions:
 
 plugins:
   - search
-  - mike
