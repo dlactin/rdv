@@ -1,7 +1,7 @@
 # RDV (render-diff-validate)
 [![Release Version](https://img.shields.io/github/v/release/dlactin/rdv?label=release)](https://github.com/dlactin/rdv/releases/latest)
 [![Build](https://github.com/dlactin/rdv/workflows/CI/badge.svg)](https://github.com/dlactin/rdv/actions?query=workflow%3A"CI")
-[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg)](https://dlactin.github.io/rdv/)
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg)](https://rdv.lactin.ca/)
 [![Go Report Card](https://goreportcard.com/badge/github.com/dlactin/rdv)](https://goreportcard.com/badge/github.com/dlactin/rdv)
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
 
