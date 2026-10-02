@@ -2,6 +2,19 @@
 
 This must be run while your current directory is within your git repository.
 
+## Helm Dependencies
+
+Dependencies with HTTP(S) repository URLs do not require a prior `helm repo add`.
+rdv uses a temporary repository configuration and cache for each render, preserving
+configured repository credentials without modifying your global Helm configuration.
+Temporary repository files are removed after rendering, including when dependency
+downloads fail. Downloaded dependencies in `charts/` and updated `Chart.lock` files
+are retained as normal Helm build outputs.
+
+Repository aliases such as `@internal` still require a matching entry in your Helm
+repository configuration. Dependencies without a `repository` field must already
+exist under the chart's `charts/` directory.
+
 ## Flags
 
 | Flag | Shorthand | Description | Default |
