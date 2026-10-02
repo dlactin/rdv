@@ -7,7 +7,7 @@ require (
 	github.com/gonvenience/ytbx v1.5.0
 	github.com/google/go-github/v84 v84.0.0
 	github.com/hexops/gotextdiff v1.0.3
-	github.com/homeport/dyff v1.11.3
+	github.com/homeport/dyff v1.12.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/yannh/kubeconform v0.7.0
@@ -50,7 +50,7 @@ require (
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gonvenience/idem v0.0.3 // indirect
-	github.com/gonvenience/neat v1.3.18 // indirect
+	github.com/gonvenience/neat v1.3.20 // indirect
 	github.com/gonvenience/term v1.0.5 // indirect
 	github.com/gonvenience/text v1.0.10 // indirect
 	github.com/google/btree v1.1.3 // indirect
