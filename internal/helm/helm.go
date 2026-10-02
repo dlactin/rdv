@@ -4,6 +4,7 @@
 package helm
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -24,6 +25,7 @@ import (
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/lint/support"
 	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 var logMutex sync.Mutex
@@ -115,6 +117,23 @@ func buildDeps(chartPath string, userValues chartutil.Values, opts options.CmdOp
 	settings := cli.New()
 	settings.Debug = opts.Debug // Setting debug to match flag
 
+	cachePath, err := os.MkdirTemp("", "rdv-helm-*")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Helm cache: %w", err)
+	}
+	defer func() {
+		if err := os.RemoveAll(cachePath); err != nil {
+			logMutex.Lock()
+			log.Printf("Warning: failed to remove Helm cache %s: %v", cachePath, err)
+			logMutex.Unlock()
+		}
+	}()
+
+	repositoryConfig := filepath.Join(cachePath, "repositories.yaml")
+	if err := prepareRepositories(chartPath, settings.RepositoryConfig, repositoryConfig, opts.Debug); err != nil {
+		return nil, err
+	}
+
 	getters := getter.All(settings)
 
 	// Create a registry client for OCI dependencies
@@ -130,11 +149,13 @@ func buildDeps(chartPath string, userValues chartutil.Values, opts options.CmdOp
 
 	// Create a downloader manager.
 	man := downloader.Manager{
-		Out:            io.Discard,
-		ChartPath:      chartPath,
-		Getters:        getters,
-		RegistryClient: registryClient,
-		Debug:          opts.Debug,
+		Out:              io.Discard,
+		ChartPath:        chartPath,
+		Getters:          getters,
+		RegistryClient:   registryClient,
+		Debug:            opts.Debug,
+		RepositoryConfig: repositoryConfig,
+		RepositoryCache:  cachePath,
 	}
 
 	// Run update. This updates the Chart.lock file if dependencies have changed.
@@ -173,6 +194,40 @@ func buildDeps(chartPath string, userValues chartutil.Values, opts options.CmdOp
 		return nil, fmt.Errorf("failed to reload chart after dependency build: %w", err)
 	}
 	return chart, nil
+}
+
+func prepareRepositories(chartPath, sourceConfig, targetConfig string, debug bool) error {
+	repositories, err := repo.LoadFile(sourceConfig)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("failed to load Helm repositories: %w", err)
+		}
+		repositories = repo.NewFile()
+	}
+	dependencyChart, err := loadChart(chartPath, debug)
+	if err != nil {
+		return err
+	}
+	registeredURLs := make(map[string]bool)
+	for _, entry := range repositories.Repositories {
+		registeredURLs[entry.URL] = true
+	}
+	for dependencyIndex, dependency := range dependencyChart.Metadata.Dependencies {
+		if registeredURLs[dependency.Repository] ||
+			(!strings.HasPrefix(dependency.Repository, "https://") && !strings.HasPrefix(dependency.Repository, "http://")) {
+			continue
+		}
+		repositoryName := fmt.Sprintf("rdv-dependency-%d", dependencyIndex)
+		for repositories.Has(repositoryName) {
+			repositoryName += "-local"
+		}
+		repositories.Add(&repo.Entry{Name: repositoryName, URL: dependency.Repository})
+		registeredURLs[dependency.Repository] = true
+	}
+	if err := repositories.WriteFile(targetConfig, 0600); err != nil {
+		return fmt.Errorf("failed to write temporary Helm repositories: %w", err)
+	}
+	return nil
 }
 
 // loadValues merges multiple values files in order, mimicking 'helm -f file1 -f file2'
