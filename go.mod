@@ -13,7 +13,7 @@ require (
 	github.com/yannh/kubeconform v0.7.0
 	go.yaml.in/yaml/v3 v3.0.4
 	golang.org/x/mod v0.41.0
-	golang.org/x/sync v0.20.0
+	golang.org/x/sync v0.23.0
 	helm.sh/helm/v3 v3.20.2
 	sigs.k8s.io/kustomize/api v0.21.1
 	sigs.k8s.io/kustomize/kyaml v0.21.1
