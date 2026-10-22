@@ -10,6 +10,7 @@ import (
 
 	"github.com/dlactin/rdv/internal/git"
 	"github.com/dlactin/rdv/internal/options"
+	"go.yaml.in/yaml/v3"
 )
 
 func TestGetRepoRoot(t *testing.T) {
@@ -225,6 +226,121 @@ func TestPrintChangeSummary(t *testing.T) {
 			t.Errorf("Expected GitHub summary %q not found in output:\n%s", expected, output)
 		}
 	})
+}
+
+func TestDedupeMappingKeys(t *testing.T) {
+	input := `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dup
+  labels:
+    executor: "computed"
+    executor: ""
+spec:
+  template:
+    spec:
+      containers:
+        - name: app
+          env:
+            - name: FOO
+              value: first
+            - name: FOO
+              value: last
+`
+	inputFile, err := createInputFileFromString(input, "test")
+	if err != nil {
+		t.Fatalf("createInputFileFromString() error = %v", err)
+	}
+	if len(inputFile.Documents) != 1 {
+		t.Fatalf("Expected 1 document, got %d", len(inputFile.Documents))
+	}
+
+	labels := findMappingValue(t, inputFile.Documents[0], "metadata", "labels")
+	executorCount := 0
+	for i := 0; i < len(labels.Content); i += 2 {
+		if labels.Content[i].Value == "executor" {
+			executorCount++
+			if got := labels.Content[i+1].Value; got != "" {
+				t.Errorf("Expected last-wins duplicate resolution (\"\"), got %q", got)
+			}
+		}
+	}
+	if executorCount != 1 {
+		t.Errorf("Expected 1 executor key after dedup, got %d", executorCount)
+	}
+}
+
+func TestCreateSemanticDiffDuplicateKeys(t *testing.T) {
+	doc := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sched
+  labels:
+    executor: "computed"
+    executor: ""
+`
+	tests := []struct {
+		name      string
+		from      string
+		to        string
+		wantDiffs int
+	}{
+		{
+			name:      "Identical documents with duplicate keys produce no diff",
+			from:      doc,
+			to:        doc,
+			wantDiffs: 0,
+		},
+		{
+			name: "Real change in the winning duplicate value is still detected",
+			from: doc,
+			to: `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sched
+  labels:
+    executor: "computed"
+    executor: "override"
+`,
+			wantDiffs: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			report, err := CreateSemanticDiff(tt.from, tt.to, "old", "new", true)
+			if err != nil {
+				t.Fatalf("CreateSemanticDiff() error = %v", err)
+			}
+			if len(report.Diffs) != tt.wantDiffs {
+				t.Errorf("Expected %d diffs, got %d", tt.wantDiffs, len(report.Diffs))
+			}
+		})
+	}
+}
+
+// findMappingValue walks a document node's mapping tree by key path and
+// returns the value node at the end of the path.
+func findMappingValue(t *testing.T, node *yaml.Node, keys ...string) *yaml.Node {
+	t.Helper()
+	for node.Kind == yaml.DocumentNode {
+		node = node.Content[0]
+	}
+	for _, key := range keys {
+		var next *yaml.Node
+		for i := 0; i < len(node.Content); i += 2 {
+			if node.Content[i].Value == key {
+				next = node.Content[i+1]
+				break
+			}
+		}
+		if next == nil {
+			t.Fatalf("Key %q not found in mapping", key)
+		}
+		node = next
+	}
+	return node
 }
 
 func TestFixGitHubDiffOutput(t *testing.T) {
