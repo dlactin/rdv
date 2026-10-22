@@ -151,6 +151,7 @@ func createInputFileFromString(content string, location string) (ytbx.InputFile,
 			}
 			return ytbx.InputFile{}, fmt.Errorf("failed to decode YAML from %s: %w", location, err)
 		}
+		dedupeMappingKeys(&node)
 		docs = append(docs, &node)
 	}
 
@@ -158,6 +159,42 @@ func createInputFileFromString(content string, location string) (ytbx.InputFile,
 		Location:  location,
 		Documents: docs,
 	}, nil
+}
+
+// dedupeMappingKeys recursively removes duplicate keys from mapping nodes,
+// keeping the last occurrence of each key. Rendered templates can emit the
+// same key twice in one mapping (e.g. a label emitted by a chart and then
+// overridden via a user-supplied labels map). Kubernetes and most YAML
+// parsers resolve this last-wins, but dyff compares each key occurrence
+// positionally and reports a phantom diff on otherwise identical documents.
+func dedupeMappingKeys(node *yaml.Node) {
+	if node == nil {
+		return
+	}
+
+	if node.Kind == yaml.MappingNode {
+		content := node.Content
+		lastIndex := make(map[string]int, len(content)/2)
+		for i := 0; i < len(content); i += 2 {
+			lastIndex[content[i].Value] = i
+		}
+		if len(lastIndex)*2 != len(content) {
+			deduped := make([]*yaml.Node, 0, len(lastIndex)*2)
+			for i := 0; i < len(content); i += 2 {
+				if lastIndex[content[i].Value] == i {
+					deduped = append(deduped, content[i], content[i+1])
+				}
+			}
+			node.Content = deduped
+		}
+	}
+
+	for _, child := range node.Content {
+		dedupeMappingKeys(child)
+	}
+	if node.Alias != nil {
+		dedupeMappingKeys(node.Alias)
+	}
 }
 
 // getDocumentName extracts the name from a Diff path
