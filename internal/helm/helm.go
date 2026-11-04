@@ -55,6 +55,11 @@ func RenderChart(chartPath, releaseName string, valuesFiles []string, opts optio
 		}
 	}
 
+	// Apply dependency aliases, conditions and tags, matching 'helm template'
+	if err := chartutil.ProcessDependenciesWithMerge(chart, userValues); err != nil {
+		return "", fmt.Errorf("failed to process chart dependencies: %w", err)
+	}
+
 	// Define release options for the render
 	options := chartutil.ReleaseOptions{
 		Name:      releaseName, // We don't need a real releaseName or namespace for the diff
