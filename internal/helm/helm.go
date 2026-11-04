@@ -98,7 +98,7 @@ func RenderChart(chartPath, releaseName string, valuesFiles []string, opts optio
 			continue
 		}
 		builder.WriteString("---\n")
-		builder.WriteString(fmt.Sprintf("# Source: %s\n", key))
+		fmt.Fprintf(&builder, "# Source: %s\n", key)
 		builder.WriteString(content)
 		builder.WriteString("\n")
 	}

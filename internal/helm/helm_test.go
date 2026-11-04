@@ -15,36 +15,42 @@ import (
 )
 
 func TestRenderChartRepositoryCache(t *testing.T) {
-	for _, failure := range []bool{false, true} {
-		t.Run(fmt.Sprintf("download failure=%t", failure), func(t *testing.T) {
-			root, cache, chartPath := repositoryCacheFixture(t, failure)
-			output, err := RenderChart(chartPath, "test", nil, options.CmdOptions{UpdateDeps: true})
-			if failure {
-				if err == nil || !strings.Contains(err.Error(), "500") {
-					t.Fatalf("expected download error, got %v", err)
-				}
-			} else {
-				if err != nil {
-					t.Fatal(err)
-				}
-				if !strings.Contains(output, "name: dependency") {
-					t.Fatalf("missing dependency render: %s", output)
-				}
-				if _, err := RenderChart(chartPath, "test", nil, options.CmdOptions{}); err != nil {
-					t.Fatalf("locked build without registered repository: %v", err)
-				}
-			}
-			entries, err := os.ReadDir(cache)
-			if err != nil || len(entries) != 0 {
-				t.Fatalf("temporary cache not cleaned: %v, %v", entries, err)
-			}
-			if _, err := os.Stat(filepath.Join(root, "missing-repositories.yaml")); !os.IsNotExist(err) {
-				t.Fatalf("global repository config was modified: %v", err)
-			}
-			if _, err := os.Stat(filepath.Join(chartPath, "tmpcharts")); !os.IsNotExist(err) {
-				t.Fatalf("temporary charts not cleaned: %v", err)
-			}
-		})
+	t.Run("download failure=false", func(t *testing.T) {
+		root, cache, chartPath := repositoryCacheFixture(t, false)
+		output, err := RenderChart(chartPath, "test", nil, options.CmdOptions{UpdateDeps: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(output, "name: dependency") {
+			t.Fatalf("missing dependency render: %s", output)
+		}
+		if _, err := RenderChart(chartPath, "test", nil, options.CmdOptions{}); err != nil {
+			t.Fatalf("locked build without registered repository: %v", err)
+		}
+		assertRepositoryCacheCleaned(t, root, cache, chartPath)
+	})
+
+	t.Run("download failure=true", func(t *testing.T) {
+		root, cache, chartPath := repositoryCacheFixture(t, true)
+		_, err := RenderChart(chartPath, "test", nil, options.CmdOptions{UpdateDeps: true})
+		if err == nil || !strings.Contains(err.Error(), "500") {
+			t.Fatalf("expected download error, got %v", err)
+		}
+		assertRepositoryCacheCleaned(t, root, cache, chartPath)
+	})
+}
+
+func assertRepositoryCacheCleaned(t *testing.T, root, cache, chartPath string) {
+	t.Helper()
+	entries, err := os.ReadDir(cache)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("temporary cache not cleaned: %v, %v", entries, err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "missing-repositories.yaml")); !os.IsNotExist(err) {
+		t.Fatalf("global repository config was modified: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(chartPath, "tmpcharts")); !os.IsNotExist(err) {
+		t.Fatalf("temporary charts not cleaned: %v", err)
 	}
 }
 
