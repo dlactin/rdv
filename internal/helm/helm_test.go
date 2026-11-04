@@ -15,36 +15,42 @@ import (
 )
 
 func TestRenderChartRepositoryCache(t *testing.T) {
-	for _, failure := range []bool{false, true} {
-		t.Run(fmt.Sprintf("download failure=%t", failure), func(t *testing.T) {
-			root, cache, chartPath := repositoryCacheFixture(t, failure)
-			output, err := RenderChart(chartPath, "test", nil, options.CmdOptions{UpdateDeps: true})
-			if failure {
-				if err == nil || !strings.Contains(err.Error(), "500") {
-					t.Fatalf("expected download error, got %v", err)
-				}
-			} else {
-				if err != nil {
-					t.Fatal(err)
-				}
-				if !strings.Contains(output, "name: dependency") {
-					t.Fatalf("missing dependency render: %s", output)
-				}
-				if _, err := RenderChart(chartPath, "test", nil, options.CmdOptions{}); err != nil {
-					t.Fatalf("locked build without registered repository: %v", err)
-				}
-			}
-			entries, err := os.ReadDir(cache)
-			if err != nil || len(entries) != 0 {
-				t.Fatalf("temporary cache not cleaned: %v, %v", entries, err)
-			}
-			if _, err := os.Stat(filepath.Join(root, "missing-repositories.yaml")); !os.IsNotExist(err) {
-				t.Fatalf("global repository config was modified: %v", err)
-			}
-			if _, err := os.Stat(filepath.Join(chartPath, "tmpcharts")); !os.IsNotExist(err) {
-				t.Fatalf("temporary charts not cleaned: %v", err)
-			}
-		})
+	t.Run("download failure=false", func(t *testing.T) {
+		root, cache, chartPath := repositoryCacheFixture(t, false)
+		output, err := RenderChart(chartPath, "test", nil, options.CmdOptions{UpdateDeps: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(output, "name: dependency") {
+			t.Fatalf("missing dependency render: %s", output)
+		}
+		if _, err := RenderChart(chartPath, "test", nil, options.CmdOptions{}); err != nil {
+			t.Fatalf("locked build without registered repository: %v", err)
+		}
+		assertRepositoryCacheCleaned(t, root, cache, chartPath)
+	})
+
+	t.Run("download failure=true", func(t *testing.T) {
+		root, cache, chartPath := repositoryCacheFixture(t, true)
+		_, err := RenderChart(chartPath, "test", nil, options.CmdOptions{UpdateDeps: true})
+		if err == nil || !strings.Contains(err.Error(), "500") {
+			t.Fatalf("expected download error, got %v", err)
+		}
+		assertRepositoryCacheCleaned(t, root, cache, chartPath)
+	})
+}
+
+func assertRepositoryCacheCleaned(t *testing.T, root, cache, chartPath string) {
+	t.Helper()
+	entries, err := os.ReadDir(cache)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("temporary cache not cleaned: %v, %v", entries, err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "missing-repositories.yaml")); !os.IsNotExist(err) {
+		t.Fatalf("global repository config was modified: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(chartPath, "tmpcharts")); !os.IsNotExist(err) {
+		t.Fatalf("temporary charts not cleaned: %v", err)
 	}
 }
 
@@ -240,6 +246,101 @@ func TestRenderChart(t *testing.T) {
 
 		if output == "" {
 			t.Errorf("Rendered output was empty")
+		}
+	})
+}
+
+func TestRenderChartDependencyAlias(t *testing.T) {
+	chartPath := t.TempDir()
+	t.Setenv("HELM_REPOSITORY_CONFIG", filepath.Join(chartPath, "missing-repositories.yaml"))
+	dependencyPath := filepath.Join(chartPath, "charts", "dep")
+	if err := os.MkdirAll(filepath.Join(dependencyPath, "templates"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		filepath.Join(chartPath, "Chart.yaml"):                       "apiVersion: v2\nname: parent\nversion: 1.0.0\ndependencies:\n  - name: dep\n    version: 1.0.0\n    alias: aliased\n",
+		filepath.Join(chartPath, "values.yaml"):                      "aliased:\n  greeting: from-alias\n",
+		filepath.Join(dependencyPath, "Chart.yaml"):                  "apiVersion: v2\nname: dep\nversion: 1.0.0\n",
+		filepath.Join(dependencyPath, "values.yaml"):                 "greeting: default\n",
+		filepath.Join(dependencyPath, "templates", "configmap.yaml"): "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: aliased\ndata:\n  greeting: {{ .Values.greeting | quote }}\n",
+	}
+	for path, content := range files {
+		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Run("alias values from chart values.yaml", func(t *testing.T) {
+		output, err := RenderChart(chartPath, "test", nil, options.CmdOptions{})
+		if err != nil {
+			t.Fatalf("RenderChart failed: %v", err)
+		}
+		if !strings.Contains(output, `greeting: "from-alias"`) {
+			t.Errorf("Output missing expected greeting from alias values. Got:\n%s", output)
+		}
+		if !strings.Contains(output, "# Source: parent/charts/aliased/templates/configmap.yaml") {
+			t.Errorf("Output missing expected aliased source path. Got:\n%s", output)
+		}
+		if strings.Contains(output, "charts/dep/") {
+			t.Errorf("Output contains un-aliased dependency path. Got:\n%s", output)
+		}
+	})
+
+	t.Run("alias values from user values file", func(t *testing.T) {
+		valuesFile := filepath.Join(chartPath, "user-values.yaml")
+		if err := os.WriteFile(valuesFile, []byte("aliased:\n  greeting: from-user\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		output, err := RenderChart(chartPath, "test", []string{valuesFile}, options.CmdOptions{})
+		if err != nil {
+			t.Fatalf("RenderChart failed: %v", err)
+		}
+		if !strings.Contains(output, `greeting: "from-user"`) {
+			t.Errorf("Output missing expected greeting from user values. Got:\n%s", output)
+		}
+	})
+}
+
+func TestRenderChartDependencyCondition(t *testing.T) {
+	chartPath := t.TempDir()
+	t.Setenv("HELM_REPOSITORY_CONFIG", filepath.Join(chartPath, "missing-repositories.yaml"))
+	dependencyPath := filepath.Join(chartPath, "charts", "dep")
+	if err := os.MkdirAll(filepath.Join(dependencyPath, "templates"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		filepath.Join(chartPath, "Chart.yaml"):                       "apiVersion: v2\nname: parent\nversion: 1.0.0\ndependencies:\n  - name: dep\n    version: 1.0.0\n    condition: dep.enabled\n",
+		filepath.Join(chartPath, "values.yaml"):                      "dep:\n  enabled: false\n",
+		filepath.Join(dependencyPath, "Chart.yaml"):                  "apiVersion: v2\nname: dep\nversion: 1.0.0\n",
+		filepath.Join(dependencyPath, "templates", "configmap.yaml"): "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: conditional\n",
+	}
+	for path, content := range files {
+		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Run("dependency disabled by chart values", func(t *testing.T) {
+		output, err := RenderChart(chartPath, "test", nil, options.CmdOptions{})
+		if err != nil {
+			t.Fatalf("RenderChart failed: %v", err)
+		}
+		if strings.Contains(output, "name: conditional") {
+			t.Errorf("Output contains dependency render despite disabled condition. Got:\n%s", output)
+		}
+	})
+
+	t.Run("dependency enabled by user values file", func(t *testing.T) {
+		valuesFile := filepath.Join(chartPath, "user-values.yaml")
+		if err := os.WriteFile(valuesFile, []byte("dep:\n  enabled: true\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		output, err := RenderChart(chartPath, "test", []string{valuesFile}, options.CmdOptions{})
+		if err != nil {
+			t.Fatalf("RenderChart failed: %v", err)
+		}
+		if !strings.Contains(output, "name: conditional") {
+			t.Errorf("Output missing dependency render enabled by condition. Got:\n%s", output)
 		}
 	})
 }

@@ -1,6 +1,6 @@
 module github.com/dlactin/rdv
 
-go 1.26.0
+go 1.27.0
 
 require (
 	github.com/gonvenience/bunt v1.4.3

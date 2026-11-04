@@ -15,7 +15,7 @@ A coloured diff shows exactly what will change before you push.
 ## Requirements
 * `make`
 * `git`
-* Go `1.24` or newer
+* Go `1.27` or newer
 
 ## Installation
 
