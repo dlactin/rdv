@@ -15,6 +15,11 @@ Repository aliases such as `@internal` still require a matching entry in your He
 repository configuration. Dependencies without a `repository` field must already
 exist under the chart's `charts/` directory.
 
+Dependency `alias`, `condition` and `tags` fields are honored the same way
+`helm template` handles them: an aliased dependency renders under its alias
+with values scoped to the alias key, and dependencies disabled by a condition
+or tag are not rendered.
+
 ## Flags
 
 | Flag | Shorthand | Description | Default |
