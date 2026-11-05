@@ -45,18 +45,18 @@ func Manifests(manifest string, debug bool) error {
 		switch res.Status {
 		case validator.Invalid:
 			validationFailed = true
-			errs.WriteString(fmt.Sprintf(
+			fmt.Fprintf(&errs,
 				"  - %s is invalid:\n      %s\n",
 				resourceID,
 				res.Err,
-			))
+			)
 		case validator.Error:
 			validationFailed = true
-			errs.WriteString(fmt.Sprintf(
+			fmt.Fprintf(&errs,
 				"  - Error processing %s:\n      %s\n",
 				resourceID,
 				res.Err,
-			))
+			)
 		}
 	}
 
